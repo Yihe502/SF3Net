@@ -1,5 +1,5 @@
 # LSFFNet
-(https://github.com/Yihe502/LSFFU-Net/edit/main/LSFFU-Net.png)
+![LSFFU-Net](https://github.com/Yihe502/LSFFU-Net/edit/main/LSFFU-Net.png)
 # LSFFU-Net is implemented using the open source framework MMsegmentation, version 1.2.2, using pytorch 2.0.0.
 # Train:
 On Vaihingen Dataset:   
