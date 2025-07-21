@@ -4,5 +4,5 @@ from .mobilev2fsf import MobileV2FSFUNet_T, MobileV2FSFUNet_S, MobileV2FSFUNet_B
 
 
 __all__ = [
-    'LSFFUNet_T', 'LSFFUNet_S', 'LSFFUNet_B', 'LSFFUNet_L'
+    'SFFUNet_T', 'SFFUNet_S', 'SFFUNet_B', 'SFFUNet_L'
 ]
