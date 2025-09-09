@@ -101,152 +101,14 @@ class SoftPool_2D(nn.Module):
         return horizontal_x, vertical_z
 
 class SFAM(nn.Module):
-    def __init__(self, dim, reduction_ratio=4):
-        super().__init__()
-        # Expanded receptive field with dilated convolution
-        self.x_conv3 = DepthWiseConv2d(dim, dim // 2, kernel_size=3, stride=1, padding=2, dilation=2)
-
-        # Multi-scale feature extraction with different dilation rates
-        self.branch1 = DepthWiseConv2d(dim // 2, dim // 4, kernel_size=3, stride=1, padding=1, dilation=1)
-        self.branch2 = DepthWiseConv2d(dim // 2, dim // 4, kernel_size=3, stride=1, padding=3, dilation=3)
-
-        # Channel attention for adaptive feature recalibration
-        self.channel_attention = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(dim // 2, dim // reduction_ratio, kernel_size=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(dim // reduction_ratio, dim // 2, kernel_size=1),
-            nn.Sigmoid()
-        )
-
-        # Enhanced spatial pooling
-        self.soft_gap = SoftPool_2D(2, 2)
-
-        # Position-sensitive feature fusion
-        self.x_conv1 = DepthWiseConv2d(dim // 2, dim, kernel_size=1, stride=1, padding=0, dilation=1)
-
-        # Residual connection
-        self.gamma = nn.Parameter(torch.zeros(1))
-
-    def forward(self, x):
-        # Feature extraction with dilated convolution
-        out_dw = self.x_conv3(x)
-
-        # Multi-scale feature extraction
-        out_branch1 = self.branch1(out_dw)
-        out_branch2 = self.branch2(out_dw)
-        out_multi = torch.cat([out_branch1, out_branch2], dim=1)
-
-        # Apply channel attention
-        channel_attn = self.channel_attention(out_multi)
-        out_multi = out_multi * channel_attn
-
-        # Spatial context modeling with softpool
-        out_u_h, out_u_w = self.soft_gap(out_multi)
-
-        # Cross-dimensional interaction
-        out_spatial = out_u_w * out_u_h
-
-        # Position-sensitive feature fusion
-        out = self.x_conv1(out_spatial)
-
-        # Upsample to original size
-        out = F.interpolate(out, size=[x.size(2), x.size(3)], mode='bilinear', align_corners=True)
-
-        # Residual connection for gradient flow
-        out = self.gamma * out + x
-
-        return out
+    '''
+*****
+    '''
 
 class FFSL(nn.Module):
-    def __init__(self, dim, bias=False, a=16, b=16, c_h=16, c_w=16):
-        super().__init__()
-        self.x_conv3 = nn.Conv2d(dim, dim // 2, kernel_size=3, padding=2, dilation=2)
-        self.soft_gap = SoftPool_2D(2, 2)
-        self.x_conv1 = nn.Conv2d(dim // 2, dim, kernel_size=1)
-
-        # 将 dim a b c_h c_w 五个参数注册为不可训练的缓冲区
-        self.register_buffer("dim_val", torch.tensor(dim, dtype=torch.int32))
-        self.register_buffer("a_val", torch.tensor(a, dtype=torch.int32))
-        self.register_buffer("b_val", torch.tensor(b, dtype=torch.int32))
-        self.register_buffer("c_h_val", torch.tensor(c_h, dtype=torch.int32))
-        self.register_buffer("c_w_val", torch.tensor(c_w, dtype=torch.int32))
-
-        # 创建四个可训练的权重参数
-        self.a_weight = nn.Parameter(torch.ones(2, 1, dim // 4, a))  # H_W Weight
-        self.b_weight = nn.Parameter(torch.ones(2, 1, dim // 4, b))  # C_W Weight
-        self.c_weight = nn.Parameter(torch.ones(2, dim // 4, c_h, c_w))  # C_H Weight
-        self.dw_conv = InvertedDepthWiseConv2d(dim // 4, dim // 4)  # DW Conv
-
-        # 创建三个神经网络层分别处理三个方向上的权重
-        self.wg_a = nn.Sequential(  # H_W axis
-            InvertedDepthWiseConv1d(dim // 4, 2 * dim // 4),
-            InvertedDepthWiseConv1d(2 * dim // 4, 2 * dim // 4),
-            InvertedDepthWiseConv1d(2 * dim // 4, dim // 4),
-        )
-        self.wg_b = nn.Sequential(  # C_W axis
-            InvertedDepthWiseConv1d(dim // 4, 2 * dim // 4),
-            InvertedDepthWiseConv1d(2 * dim // 4, 2 * dim // 4),
-            InvertedDepthWiseConv1d(2 * dim // 4, dim // 4),
-        )
-        self.wg_c = nn.Sequential(  # C_H axis
-            InvertedDepthWiseConv2d(dim // 4, 2 * dim // 4),
-            InvertedDepthWiseConv2d(2 * dim // 4, 2 * dim // 4),
-            InvertedDepthWiseConv2d(2 * dim // 4, dim // 4),
-        )
-
-        self.fusion_x1 = FeatureFusion()
-        self.fusion_x2 = FeatureFusion()
-
-    def forward(self, x):
-        x1, x2, x3, x4 = torch.chunk(x, 4, dim=1)
-        B, c, a, b = x1.size()  # B C H W
-
-        # ------- a convlution -------#
-        x1 = x1.permute(0, 2, 1, 3)  # B H C W
-        x1 = torch.fft.rfft2(x1, dim=(2, 3), norm='ortho')  # C_W H
-        a_weight = self.a_weight
-        a_weight = self.wg_a(F.interpolate(a_weight, size=x1.shape[2:4],
-                                           mode='bilinear', align_corners=True
-                                           ).squeeze(1)).unsqueeze(1).permute(1, 2, 3, 0)
-        a_weight = torch.view_as_complex(a_weight.contiguous())
-        x1 = x1 * a_weight
-        x1 = torch.fft.irfft2(x1, s=(c, b), dim=(2, 3), norm='ortho').permute(0, 2, 1, 3)  # B C H W
-
-        # ------- b convlution -------#
-        x2 = x2.permute(0, 3, 1, 2)  # B W C H
-        x2 = torch.fft.rfft2(x2, dim=(2, 3), norm='ortho')  # C_H W
-        b_weight = self.b_weight
-        b_weight = self.wg_b(F.interpolate(b_weight, size=x2.shape[2:4],
-                                           mode='bilinear', align_corners=True
-                                           ).squeeze(1)).unsqueeze(1).permute(1, 2, 3, 0)
-        b_weight = torch.view_as_complex(b_weight.contiguous())
-        x2 = x2 * b_weight
-        x2 = torch.fft.irfft2(x2, s=(c, a), dim=(2, 3), norm='ortho').permute(0, 2, 3, 1)  # B C H W
-
-        # ------- c convlution -------## B C H W
-        x3 = torch.fft.rfft2(x3, dim=(2, 3), norm='ortho')  # H_W C
-        c_weight = self.c_weight
-        c_weight = self.wg_c(F.interpolate(c_weight, size=x3.shape[2:4],
-                                           mode='bilinear', align_corners=True
-                                           )).permute(1, 2, 3, 0)
-        c_weight = torch.view_as_complex(c_weight.contiguous())
-        x3 = x3 * c_weight
-        x3 = torch.fft.irfft2(x3, s=(a, b), dim=(2, 3), norm='ortho')
-
-        # ------- Dw onvlution -------#
-        x4 = self.dw_conv(x4)
-
-        # ------- concat -------#
-        output_x1 = self.fusion_x1(x1, x3)
-        output_x2 = self.fusion_x2(x2, x3)
-
-        out_m = torch.cat([output_x1, output_x2, x3, x4], dim=1)
-
-        # ------- final output -------#
-        out = out_m + x
-        return out
-
+    '''
+*****
+    '''
 
 class Conv1dGNGELU(nn.Sequential):
     def __init__(self, in_channel, out_channel, kernel_size=3, stride=1, groups=1):
@@ -308,24 +170,10 @@ class PreNorm(nn.Module):
 
 
 class SFFM(nn.Module):
-    def __init__(self, channel, depth, mlp_ratio=4):
-        super().__init__()
-        self.layers = nn.ModuleList([])
-        for _ in range(depth):
-            self.layers.append(nn.ModuleList([
-                PreNorm(channel, FFSL(channel)),
-                PreNorm(channel, SFAM(channel)),
-                PreNorm(channel, MLP(channel, mlp_ratio)),
-            ]))
-    # all
-    def forward(self, x):
-        for attn, sfam, ff in self.layers:
-            x_f = attn(x)
-            x_s = sfam(x)
-            x_F = x + x_f + x_s
-            x = x + ff(x_F) + x_F
+    '''
+*****
+    '''
 
-        return x
 
 class DepthWiseConv2d(nn.Module):
     def __init__(self, dim_in, dim_out, kernel_size=3, stride=1, padding=1, dilation=1, norm_type='gn', gn_num=4):
