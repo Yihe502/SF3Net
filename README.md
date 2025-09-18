@@ -1,6 +1,6 @@
-# SFFNet
-![SFFU-Net](https://github.com/Yihe502/SFFU-Net/blob/main/SFFU-Net.png)
-# SFFU-Net is implemented using the open source framework MMsegmentation, version 1.2.2, using pytorch 2.0.0.
+# SF3Net
+![SF3Net](https://github.com/Yihe502/SF3Net/blob/main/SF3Net.png)
+# SF3Net is implemented using the open source framework MMsegmentation, version 1.2.2, using pytorch 2.0.0.
 # The Farmland dataset can be obtained from https://faculty.nuist.edu.cn/huanhai/zh_CN/zhym/62898/list/index.htm or https://pan.baidu.com/s/1Ig6f_3wKSbHNCT6kZHi25A?pwd=c308
 # Train:
 On Vaihingen Dataset:   
