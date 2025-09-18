@@ -32,7 +32,7 @@ class DepthWiseConv2d(nn.Module):
         return self.activation(x)
 
 @MODELS.register_module()
-class SFFUNet(BaseModule):
+class SF3Net(BaseModule):
     def __init__(self,
                  in_channels=3,
                  out_indices=(0, 1, 2, 3, 4),
@@ -92,7 +92,7 @@ class SFFUNet(BaseModule):
         return [outs[i] for i in self.out_indices]
 
 @MODELS.register_module()
-class SFFUNet_T(LSFFUNet):
+class SF3Net_T(LSFFUNet):
     def __init__(self, dim=[16, 32, 48, 96, 128], **kwargs):
         super().__init__(
             dim=dim,
@@ -101,7 +101,7 @@ class SFFUNet_T(LSFFUNet):
         )
 
 @MODELS.register_module()
-class SFFUNet_S(LSFFUNet):
+class SF3Net_S(LSFFUNet):
     def __init__(self, dim=[16, 32, 64, 128, 160], **kwargs):
         super().__init__(
             dim=dim,
@@ -110,7 +110,7 @@ class SFFUNet_S(LSFFUNet):
         )
 
 @MODELS.register_module()
-class SFFUNet_B(LSFFUNet):
+class SF3Net_B(LSFFUNet):
     def __init__(self, dim=[32, 48, 96, 128, 192], **kwargs):
         super().__init__(
             dim=dim,
@@ -120,7 +120,7 @@ class SFFUNet_B(LSFFUNet):
 
 
 @MODELS.register_module()
-class SFFUNet_L(LSFFUNet):
+class SF3Net_L(LSFFUNet):
     def __init__(self, dim=[32, 48, 96, 320, 512], **kwargs):
         super().__init__(
             dim=dim,
