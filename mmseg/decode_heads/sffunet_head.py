@@ -274,7 +274,7 @@ class FeatureSelectionModule(nn.Module):
         return self.gamma * output + encoder_features
 
 @MODELS.register_module()
-class FSFDecodeHead(BaseDecodeHead):
+class SF3DecodeHead(BaseDecodeHead):
     def __init__(self,
                  in_channels,
                  channels,
@@ -361,7 +361,7 @@ class FSFDecodeHead(BaseDecodeHead):
         return output
 
 @MODELS.register_module()
-class FSFDecodeHead_T(FSFDecodeHead):
+class SF3DecodeHead_T(FSFDecodeHead):
     def __init__(self, dim=[16, 32, 48, 96, 128], **kwargs):
         super().__init__(
             dim=dim,
@@ -369,7 +369,7 @@ class FSFDecodeHead_T(FSFDecodeHead):
         )
 
 @MODELS.register_module()
-class FSFDecodeHead_S(FSFDecodeHead):
+class SF3DecodeHead_S(FSFDecodeHead):
     def __init__(self, dim=[16, 32, 64, 128, 160], **kwargs):
         super().__init__(
             dim=dim,
@@ -377,7 +377,7 @@ class FSFDecodeHead_S(FSFDecodeHead):
         )
 
 @MODELS.register_module()
-class FSFDecodeHead_B(FSFDecodeHead):
+class SF3DecodeHead_B(FSFDecodeHead):
     def __init__(self, dim=[32, 48, 96, 128, 192], **kwargs):
         super().__init__(
             dim=dim,
@@ -385,7 +385,7 @@ class FSFDecodeHead_B(FSFDecodeHead):
         )
 
 @MODELS.register_module()
-class FSFDecodeHead_L(FSFDecodeHead):
+class SF3DecodeHead_L(FSFDecodeHead):
     def __init__(self, dim=[24, 32, 96, 320, 512], **kwargs):
         super().__init__(
             dim=dim,
